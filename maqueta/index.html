@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TRAYECTA – Plataforma Estudiantil</title>  <!-- ★ CAMBIO: antes "SGTA – Sistema de Gestión..." -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════ LOGIN ═══════════════════════════ -->
+  <div id="screen-login" class="screen active">
+    <div class="login-wrapper">
+
+      <!-- Tarjeta blanca -->
+      <div class="login-card">
+
+        <!-- Tres puntos estilo navegador -->
+        <div class="login-dots">
+          <span class="dot dot-blue"></span>
+          <span class="dot dot-lblue"></span>
+          <span class="dot dot-dark"></span>
+        </div>
+
+        <!-- Título -->
+        <!-- ★ CAMBIO: logo arriba del título (antes solo <h1>SGTA</h1>) -->
+        <img src="img/logo-trayecta.png" alt="Logo de TRAYECTA" class="login-logo">
+        <h1 class="login-title">TRAYECTA</h1>
+
+        <!-- Campo usuario -->
+        <input class="login-pill-input" type="text" id="login-email" placeholder="correo electrónico">
+
+        <!-- Campo contraseña -->
+        <input class="login-pill-input" type="password" id="login-pass" placeholder="contraseña">
+
+        <!-- Selector de rol -->
+        <div class="roles-grid">
+          <button class="role-btn selected" data-role="student" onclick="selectRole(this)">
+            <span class="icon">👩‍🎓</span>
+            <span class="label">Estudiante</span>
+          </button>
+          <button class="role-btn" data-role="teacher" onclick="selectRole(this)">
+            <span class="icon">👨‍🏫</span>
+            <span class="label">Docente</span>
+          </button>
+          <button class="role-btn" data-role="admin" onclick="selectRole(this)">
+            <span class="icon">🛡️</span>
+            <span class="label">Administrativo</span>
+          </button>
+        </div>
+
+        <!-- Link Registrarse -->
+        <p class="login-register">Registrarse</p>
+      </div>
+
+      <!-- Botón Ingresar — fuera de la tarjeta -->
+      <button class="btn-ingresar" onclick="doLogin()">
+        Ingresar
+        <span class="btn-arrow">▼</span>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════ APP LAYOUT ═══════════════════════════ -->
+  <div id="app-layout" class="screen">
+
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <!-- ★ CAMBIO: símbolo de TRAYECTA junto al nombre -->
+        <img src="img/logo-trayecta.png" alt="Logo de TRAYECTA" class="sidebar-logo-img">
+        <div>
+          <!-- ★ CAMBIO: antes <span class="sg">SG</span><span class="ta">TA</span> y "Tutorías Académicas · UTP" -->
+          <div><span class="sg">TRAYE</span><span class="ta">CTA</span></div>
+          <small>Tutorías académicas</small>
+        </div>
+      </div>
+
+      <div class="sidebar-user">
+        <div class="sidebar-avatar" id="s-avatar">E</div>
+        <div class="sidebar-user-info">
+          <div class="name" id="s-name">Cargando...</div>
+          <span class="role-tag" id="s-role-tag">—</span>
+        </div>
+      </div>
+
+      <div class="sidebar-nav" id="sidebar-nav"></div>
+
+      <div class="sidebar-footer">
+        <!-- BOTÓN VOLVER AL LOGIN -->
+        <button class="btn-back" onclick="doLogout()">
+          ← Volver al Login
+        </button>
+        <button class="btn-logout" onclick="doLogout()">
+          🚪 Cerrar Sesión
+        </button>
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <div class="topbar">
+        <div class="topbar-left">
+          <!-- BOTÓN ATRÁS VISIBLE EN TOPBAR -->
+          <button class="btn-back-top" onclick="doLogout()" title="Volver al Login">
+            ← Inicio
+          </button>
+          <h1 id="topbar-title">Dashboard</h1>
+        </div>
+        <div class="topbar-right">
+          <button class="notif-btn" title="Notificaciones">🔔<span class="notif-dot"></span></button>
+          <span class="date-chip" id="today-date"></span>
+        </div>
+      </div>
+
+      <div class="page-body" id="page-body">
+        <!-- Vistas cargadas dinámicamente por script.js -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════ MODAL ═══════════════════════════ -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal" id="modal-content"></div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast" id="toast">
+    <span id="toast-msg"></span>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
