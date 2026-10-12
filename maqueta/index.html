@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SGTA – Sistema de Gestión de Tutorías Académicas</title>
+  <title>TRAYECTA – Plataforma Estudiantil</title>  <!-- ★ CAMBIO: antes "SGTA – Sistema de Gestión..." -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -24,13 +24,15 @@
         </div>
 
         <!-- Título -->
-        <h1 class="login-title">SGTA</h1>
+        <!-- ★ CAMBIO: logo arriba del título (antes solo <h1>SGTA</h1>) -->
+        <img src="img/logo-trayecta.png" alt="Logo de TRAYECTA" class="login-logo">
+        <h1 class="login-title">TRAYECTA</h1>
 
         <!-- Campo usuario -->
-        <input class="login-pill-input" type="text" id="login-email" placeholder="usuario" value="estudiante@utp.edu.co">
+        <input class="login-pill-input" type="text" id="login-email" placeholder="correo electrónico">
 
         <!-- Campo contraseña -->
-        <input class="login-pill-input" type="password" id="login-pass" placeholder="contraseña" value="1234">
+        <input class="login-pill-input" type="password" id="login-pass" placeholder="contraseña">
 
         <!-- Selector de rol -->
         <div class="roles-grid">
@@ -44,7 +46,7 @@
           </button>
           <button class="role-btn" data-role="admin" onclick="selectRole(this)">
             <span class="icon">🛡️</span>
-            <span class="label">Admin</span>
+            <span class="label">Administrativo</span>
           </button>
         </div>
 
@@ -67,9 +69,12 @@
     <!-- SIDEBAR -->
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-logo">
+        <!-- ★ CAMBIO: símbolo de TRAYECTA junto al nombre -->
+        <img src="img/logo-trayecta.png" alt="Logo de TRAYECTA" class="sidebar-logo-img">
         <div>
-          <div><span class="sg">SG</span><span class="ta">TA</span></div>
-          <small>Tutorías Académicas · UTP</small>
+          <!-- ★ CAMBIO: antes <span class="sg">SG</span><span class="ta">TA</span> y "Tutorías Académicas · UTP" -->
+          <div><span class="sg">TRAYE</span><span class="ta">CTA</span></div>
+          <small>Tutorías académicas</small>
         </div>
       </div>
 
