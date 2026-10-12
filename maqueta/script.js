@@ -462,56 +462,63 @@ const VIEWS = {
   },
 
   // ─── ESTUDIANTE: SOLICITAR TUTORÍA ─────────
-  'st-request': () => `
-    <div class="card" style="max-width:580px">
-      <div class="card-header">
-        <span class="card-title">📝 Nueva Solicitud de Tutoría</span>
-      </div>
-      <div class="card-body" style="padding:24px">
-        <div class="form-group">
-          <label>Materia</label>
-          <select id="r-subject">
-            <option value="">-- Seleccionar --</option>
-            ${MATERIAS.map(m => `<option>${escapeHtml(m)}</option>`).join('')}
-          </select>
+  'st-request': () => {
+    const materiasActivas = [...new Set(MATRICULAS
+      .filter(matricula => matricula.estudiante === USERS.student.name && matricula.estado === 'ACTIVA')
+      .map(matricula => matricula.asignatura))];
+    return `
+      <div class="card" style="max-width:580px">
+        <div class="card-header">
+          <span class="card-title">📝 Nueva Solicitud de Tutoría</span>
         </div>
-        <div class="form-group">
-          <label>Docente</label>
-          <select id="r-teacher">
-            <option value="">-- Seleccionar --</option>
-            ${DOCENTES.map(d => `<option>${d}</option>`).join('')}
-          </select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="card-body" style="padding:24px">
           <div class="form-group">
-            <label>Fecha</label>
-            <input type="date" id="r-date" min="${new Date().toISOString().split('T')[0]}">
-          </div>
-          <div class="form-group">
-            <label>Hora</label>
-            <select id="r-hour">
-              <option value="">-- Hora --</option>
-              ${HORAS.map(h => `<option>${h}</option>`).join('')}
+            <label>Materia</label>
+            <select id="r-subject" onchange="actualizarDocentesTutorias()">
+              <option value="">-- Seleccionar --</option>
+              ${materiasActivas.map(materia => `<option value="${escapeHtml(materia)}">${escapeHtml(materia)}</option>`).join('')}
             </select>
           </div>
+          <div class="form-group">
+            <label>Docente</label>
+            <select id="r-teacher" disabled onchange="validarDisponibilidadTutorias()">
+              <option value="">-- Selecciona primero una materia --</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label>Fecha</label>
+              <input type="date" id="r-date" min="${new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)}" onchange="validarDisponibilidadTutorias()">
+            </div>
+            <div class="form-group">
+              <label>Hora</label>
+              <select id="r-hour" onchange="validarDisponibilidadTutorias()">
+                <option value="">-- Hora --</option>
+                ${HORAS.map(h => `<option>${h}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Modalidad</label>
+            <select id="r-mode">
+              <option value="">-- Seleccionar --</option>
+              <option>Presencial</option>
+              <option>Virtual</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tema o descripción</label>
+            <input type="text" id="r-desc" placeholder="Ej: Dudas sobre integrales del capítulo 3">
+          </div>
+          <div id="r-conflict" role="status" style="margin-bottom:12px;color:var(--text2);font-size:13px">
+            Selecciona materia, docente, fecha y hora para validar la disponibilidad.
+          </div>
+          <button id="r-submit" class="btn btn-primary" style="width:100%;margin-top:8px" onclick="submitRequest()">
+            📩 Enviar Solicitud
+          </button>
         </div>
-        <div class="form-group">
-          <label>Modalidad</label>
-          <select id="r-mode">
-            <option value="">-- Seleccionar --</option>
-            <option>Presencial</option>
-            <option>Virtual</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Tema o descripción</label>
-          <input type="text" id="r-desc" placeholder="Ej: Dudas sobre integrales del capítulo 3">
-        </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="submitRequest()">
-          📩 Enviar Solicitud
-        </button>
-      </div>
-    </div>`,
+      </div>`;
+  },
 
   // ─── ESTUDIANTE: MIS TUTORÍAS ───────────────
   'st-my': () => {
@@ -874,7 +881,7 @@ const VIEWS = {
 
   // ─── DOCENTE: HISTORIAL ─────────────────────
   'tc-history': () => {
-    const his = TUTORIAS.filter(t => t.teacher === 'Dr. Andrés López');
+    const his = TUTORIAS.filter(t => t.teacher === USERS.teacher.name);
     return `
       <div class="card">
         <div class="card-header">
@@ -882,7 +889,7 @@ const VIEWS = {
         </div>
         <div class="card-body">
           <table>
-            <thead><tr><th>Estudiante</th><th>Materia</th><th>Fecha</th><th>Hora</th><th>Modalidad</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Estudiante</th><th>Materia</th><th>Fecha</th><th>Hora</th><th>Modalidad</th><th>Estado</th><th>Asistencia</th><th>Observaciones</th><th>Acciones</th></tr></thead>
             <tbody>
               ${his.map(t => `
                 <tr>
@@ -892,6 +899,11 @@ const VIEWS = {
                   <td>${t.hour}</td>
                   <td>${t.mode}</td>
                   <td>${badge(t.status)}</td>
+                  <td>${t.asistio === true ? 'Sí' : t.asistio === false ? 'No' : '—'}</td>
+                  <td>${escapeHtml(t.observaciones || '—')}</td>
+                  <td>${t.status === 'accepted' || t.status === 'done'
+                    ? `<button class="btn btn-primary btn-sm" onclick="abrirRegistroAsistencia(${t.id})">${t.status === 'done' ? 'Editar registro' : 'Registrar resultado'}</button>`
+                    : '—'}</td>
                 </tr>`).join('')}
             </tbody>
           </table>
@@ -1278,18 +1290,36 @@ function submitRequest() {
   const date    = document.getElementById('r-date').value;
   const hour    = document.getElementById('r-hour').value;
   const mode    = document.getElementById('r-mode').value;
+  const description = document.getElementById('r-desc').value.trim();
 
   if (!subject || !teacher || !date || !hour || !mode) {
     showToast('⚠️ Completa todos los campos');
     return;
   }
+  const matriculaActiva = MATRICULAS.some(matricula => matricula.estudiante === USERS.student.name
+    && matricula.asignatura === subject && matricula.docente === teacher && matricula.estado === 'ACTIVA');
+  if (!matriculaActiva) {
+    showToast('⚠️ Solo puedes solicitar tutorías de materias con matrícula activa');
+    return;
+  }
+  if (date < new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10)) {
+    showToast('⚠️ La fecha de tutoría no puede estar en el pasado');
+    return;
+  }
+  const conflicto = obtenerConflictoTutoria(USERS.student.name, teacher, date, hour);
+  if (conflicto) {
+    showToast(`⚠️ No se puede agendar: ${conflicto}`);
+    validarDisponibilidadTutorias();
+    return;
+  }
 
   const newTutoria = {
-    id:      TUTORIAS.length + 1,
-    student: 'Laura Gómez',
+    id:      TUTORIAS.reduce((maximo, tutoria) => Math.max(maximo, tutoria.id), 0) + 1,
+    student: USERS.student.name,
     teacher, subject, date, hour, mode,
     status:  'pending',
-    room:    'Por confirmar'
+    room:    'Por confirmar',
+    descripcion: description
   };
 
   TUTORIAS.push(newTutoria);
@@ -1303,6 +1333,83 @@ function submitRequest() {
   );
   showToast('✅ Solicitud enviada correctamente');
   navigate('st-my');
+}
+
+function actualizarDocentesTutorias() {
+  const materia = document.getElementById('r-subject').value;
+  const docenteSelect = document.getElementById('r-teacher');
+  const docentes = [...new Set(MATRICULAS
+    .filter(matricula => matricula.estudiante === USERS.student.name
+      && matricula.asignatura === materia && matricula.estado === 'ACTIVA')
+    .map(matricula => matricula.docente)
+    .filter(Boolean))];
+  docenteSelect.innerHTML = `<option value="">-- Seleccionar --</option>${docentes
+    .map(docente => `<option value="${escapeHtml(docente)}">${escapeHtml(docente)}</option>`).join('')}`;
+  docenteSelect.disabled = docentes.length === 0;
+  validarDisponibilidadTutorias();
+}
+
+function obtenerConflictoTutoria(estudiante, docente, fecha, hora, tutoriaIdExcluir = null) {
+  const fechaSeleccionada = new Date(`${fecha}T12:00:00`);
+  if (Number.isNaN(fechaSeleccionada.getTime()) || !hora) return null;
+  const dia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][fechaSeleccionada.getDay()];
+  const inicio = aMinutos(hora);
+  const fin = inicio + 60;
+  const seCruza = grupo => grupo.activo && grupo.dia === dia
+    && inicio < aMinutos(grupo.horaFin) && fin > aMinutos(grupo.horaInicio);
+
+  const gruposEstudiante = MATRICULAS
+    .filter(matricula => matricula.estudiante === estudiante && matricula.estado === 'ACTIVA')
+    .map(matricula => GRUPOS_DISPONIBLES.find(grupo => grupo.id === matricula.grupo))
+    .filter(Boolean);
+  if (gruposEstudiante.some(seCruza)) return 'cruce con el horario de clases del estudiante';
+  if (GRUPOS_DISPONIBLES.some(grupo => grupo.docente === docente && seCruza(grupo))) {
+    return 'cruce con el horario de clases del docente';
+  }
+
+  const hayCruceTutoria = TUTORIAS.some(otra => otra.id !== tutoriaIdExcluir
+    && (otra.status === 'pending' || otra.status === 'accepted')
+    && otra.date === fecha
+    && (otra.student === estudiante || otra.teacher === docente)
+    && inicio < aMinutos(otra.hour) + 60
+    && fin > aMinutos(otra.hour));
+  return hayCruceTutoria ? 'cruce con otra tutoría pendiente o agendada' : null;
+}
+
+function validarDisponibilidadTutorias() {
+  const materiaSelect = document.getElementById('r-subject');
+  const docenteSelect = document.getElementById('r-teacher');
+  const fechaInput = document.getElementById('r-date');
+  const horaSelect = document.getElementById('r-hour');
+  const resultado = document.getElementById('r-conflict');
+  const boton = document.getElementById('r-submit');
+  if (!materiaSelect || !docenteSelect || !fechaInput || !horaSelect || !resultado || !boton) return;
+
+  const materia = materiaSelect.value;
+  const docente = docenteSelect.value;
+  const fecha = fechaInput.value;
+  const hora = horaSelect.value;
+  if (!materia || !docente || !fecha || !hora) {
+    resultado.textContent = 'Selecciona materia, docente, fecha y hora para validar la disponibilidad.';
+    resultado.style.color = 'var(--text2)';
+    boton.disabled = false;
+    return;
+  }
+  const conflicto = obtenerConflictoTutoria(USERS.student.name, docente, fecha, hora);
+  const fechaHoy = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  if (fecha < fechaHoy) {
+    resultado.textContent = 'La fecha seleccionada ya pasó.';
+    resultado.style.color = 'var(--danger, #e05252)';
+    boton.disabled = true;
+  } else if (conflicto) {
+    resultado.textContent = `Horario no disponible: ${conflicto}.`;
+    resultado.style.color = 'var(--danger, #e05252)';
+    boton.disabled = true;
+  } else {
+    resultado.textContent = 'Horario disponible.';
+    resultado.style.color = 'var(--success, #24a879)';
+    boton.disabled = false;
+  }
 }
 
 function cancelTutoria(id) {
@@ -1362,6 +1469,13 @@ function showDetails(id) {
 function respondTutoria(id, action) {
   const t = TUTORIAS.find(t => t.id === id);
   if (!t) return;
+  if (action === 'accepted') {
+    const conflicto = obtenerConflictoTutoria(t.student, t.teacher, t.date, t.hour, t.id);
+    if (conflicto) {
+      showToast(`⚠️ No se puede aceptar: ${conflicto}`);
+      return;
+    }
+  }
   const estadoAnterior = t.status;
   t.status = action;
   registrarAuditoria(
@@ -1381,11 +1495,79 @@ function respondTutoria(id, action) {
   navigate('tc-requests');
 }
 
+function abrirRegistroAsistencia(id) {
+  const tutoria = TUTORIAS.find(item => item.id === id && item.teacher === USERS.teacher.name);
+  if (!tutoria || (tutoria.status !== 'accepted' && tutoria.status !== 'done')) {
+    showToast('⚠️ No se puede registrar la asistencia de esta tutoría');
+    return;
+  }
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>📝 Registrar asistencia</h3>
+    <p>${escapeHtml(tutoria.student)} · ${escapeHtml(tutoria.subject)} · ${fmtDate(tutoria.date)} ${escapeHtml(tutoria.hour)}</p>
+    <div class="form-group">
+      <label for="tutoria-asistencia">¿El estudiante asistió?</label>
+      <select id="tutoria-asistencia">
+        <option value="">-- Seleccionar --</option>
+        <option value="si" ${tutoria.asistio === true ? 'selected' : ''}>Sí asistió</option>
+        <option value="no" ${tutoria.asistio === false ? 'selected' : ''}>No asistió</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="tutoria-observaciones">Comentarios de seguimiento</label>
+      <textarea id="tutoria-observaciones" rows="4" maxlength="1000" placeholder="Registra acuerdos, temas pendientes o recomendaciones.">${escapeHtml(tutoria.observaciones || '')}</textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarRegistroAsistencia(${tutoria.id})">Guardar registro</button>
+    </div>`);
+}
+
+function guardarRegistroAsistencia(id) {
+  const tutoria = TUTORIAS.find(item => item.id === id && item.teacher === USERS.teacher.name);
+  const asistencia = document.getElementById('tutoria-asistencia').value;
+  const observaciones = document.getElementById('tutoria-observaciones').value.trim();
+  if (!tutoria || (tutoria.status !== 'accepted' && tutoria.status !== 'done')) {
+    showToast('⚠️ No se puede actualizar este registro');
+    return;
+  }
+  if (asistencia !== 'si' && asistencia !== 'no') {
+    showToast('⚠️ Indica si el estudiante asistió');
+    return;
+  }
+  const anterior = {
+    estado: tutoria.status,
+    asistio: tutoria.asistio ?? null,
+    observaciones: tutoria.observaciones || ''
+  };
+  tutoria.asistio = asistencia === 'si';
+  tutoria.observaciones = observaciones;
+  tutoria.status = 'done';
+  registrarAuditoria(
+    USERS.teacher.name,
+    'TUTORIA',
+    tutoria.id,
+    anterior,
+    { estado: tutoria.status, asistio: tutoria.asistio, observaciones: tutoria.observaciones },
+    'Registro de asistencia y seguimiento'
+  );
+  closeModal();
+  showToast('✅ Asistencia y observaciones guardadas');
+  navigate('tc-history');
+}
+
 function reasignarResponsableTutoria(id, nuevoDocente) {
   const tutoria = TUTORIAS.find(t => t.id === id);
   if (!tutoria || !nuevoDocente || tutoria.teacher === nuevoDocente) {
     showToast('⚠️ No se puede reasignar la tutoría');
     return;
+  }
+  if (tutoria.status === 'pending' || tutoria.status === 'accepted') {
+    const conflicto = obtenerConflictoTutoria(tutoria.student, nuevoDocente, tutoria.date, tutoria.hour, tutoria.id);
+    if (conflicto) {
+      showToast(`⚠️ No se puede reasignar: ${conflicto}`);
+      return;
+    }
   }
   const docenteAnterior = tutoria.teacher;
   tutoria.teacher = nuevoDocente;

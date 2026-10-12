@@ -618,7 +618,8 @@ modificando colores y tipografia de SGTA (proyecto base)
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
   padding: 12px 14px;
   border: 1.5px solid var(--border);
@@ -631,13 +632,19 @@ modificando colores y tipografia de SGTA (proyecto base)
   transition: .2s;
 }
 
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
 .from-group select option {
   background: var(--panel);
   color: var(--text);
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: var(--teal-glow);
   box-shadow: 0 0 0 3px rgba(95,211,208,.35);;
