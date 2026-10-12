@@ -7,7 +7,7 @@
 // ══════════════════════════════════════════════
 //  DATOS DEL SISTEMA
 // ══════════════════════════════════════════════
-
+// cambio de prueba
 const USERS = {
   student: {
     name: 'Laura Gómez',
@@ -56,25 +56,63 @@ const MATERIAS = ['Cálculo Diferencial', 'Álgebra Lineal', 'Programación I', 
 const DOCENTES = ['Dr. Andrés López', 'Dra. María Torres', 'Dr. Jorge Reyes'];
 const HORAS    = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'];
 
-const UMBRAL_APROBACION = 3.0;
-const GRUPOS_DOCENTE = [
-  {
-    name: 'Cálculo Diferencial · Grupo 01',
-    students: [
-      { name: 'Laura Gómez', partialAverage: 3.7, habilitationPending: false },
-      { name: 'Pedro Sánchez', partialAverage: 2.6, habilitationPending: true }
-    ]
-  },
-  {
-    name: 'Álgebra Lineal · Grupo 02',
-    students: [
-      { name: 'Ana Martínez', partialAverage: 2.8, habilitationPending: false }
-    ]
-  }
-];
-
 // Rol activo
 let currentRole = 'student';
+
+function notaVisible(nota) {
+  return nota && (nota.estado === 'PUBLICADA' || nota.estado === 'CERRADA') && nota.valor !== null;
+}
+
+function calcularDefinitiva(notas) {
+  if (notaVisible(notas.HAB) && PERIODO_ACTUAL.politicaHabilitacion === 'REEMPLAZA') {
+    return notas.HAB.valor;
+  }
+
+  return Object.keys(PERIODO_ACTUAL.pesos).reduce((total, corte) => {
+    if (!notaVisible(notas[corte])) return total;
+    return total + notas[corte].valor * PERIODO_ACTUAL.pesos[corte];
+  }, 0);
+}
+
+function calcularPromedioParcialDocente(notas) {
+  const cortesDisponibles = Object.keys(PERIODO_ACTUAL.pesos)
+    .filter(corte => notaVisible(notas[corte]));
+  const pesoDisponible = cortesDisponibles.reduce((total, corte) => total + PERIODO_ACTUAL.pesos[corte], 0);
+
+  if (!pesoDisponible) return 0;
+
+  const suma = cortesDisponibles.reduce((total, corte) => (
+    total + notas[corte].valor * PERIODO_ACTUAL.pesos[corte]
+  ), 0);
+  return suma / pesoDisponible;
+}
+
+function getSemaforoEstudiante(matricula) {
+  const promedio = calcularPromedioParcialDocente(matricula.notas);
+  const cortesCompletos = Object.keys(PERIODO_ACTUAL.pesos).every(corte => notaVisible(matricula.notas[corte]));
+  const definitiva = calcularDefinitiva(matricula.notas);
+  const tieneHabilitacionPendiente = cortesCompletos
+    && definitiva >= PERIODO_ACTUAL.rangoHabilitacion.minimo
+    && definitiva <= PERIODO_ACTUAL.rangoHabilitacion.maximo
+    && !notaVisible(matricula.notas.HAB);
+
+  if (tieneHabilitacionPendiente) {
+    return { clase: 'amarillo', mensaje: 'Habilitación pendiente', promedio };
+  }
+  if (promedio < PERIODO_ACTUAL.umbral) {
+    return { clase: 'rojo', mensaje: 'Riesgo de reprobación', promedio };
+  }
+  return { clase: 'verde', mensaje: 'Desempeño satisfactorio', promedio };
+}
+
+function badgeNota(estado) {
+  const badges = {
+    BORRADOR: '<span class="badge-status bs-pending">📝 Borrador</span>',
+    PUBLICADA: '<span class="badge-status bs-accepted">✅ Publicada</span>',
+    CERRADA: '<span class="badge-status bs-done">🔒 Cerrada</span>'
+  };
+  return badges[estado] || `<span class="badge-status">${estado || '—'}</span>`;
+}
 
 // ══════════════════════════════════════════════
 //  FECHA ACTUAL
@@ -165,17 +203,23 @@ const NAVS = {
     { id: 'st-request',   icon: '📝', label: 'Solicitar Tutoría' },
     { id: 'st-my',        icon: '📅', label: 'Mis Tutorías' },
     { id: 'st-history',   icon: '🕒', label: 'Historial' },
+    { id: 'st-grades',    icon: '🎓', label: 'Mis Notas' },
+    { id: 'st-request-subject', icon: '📖', label: 'Solicitar Materia' },
+    { id: 'st-requests-status', icon: '📨', label: 'Mis Trámites' },
   ],
   teacher: [
     { id: 'tc-dashboard', icon: '🏠', label: 'Inicio' },
     { id: 'tc-requests',  icon: '📩', label: 'Solicitudes' },
     { id: 'tc-schedule',  icon: '📆', label: 'Mi Horario' },
     { id: 'tc-history',   icon: '🕒', label: 'Historial' },
+    { id: 'tc-grades',    icon: '📊', label: 'Gestionar Notas' },
   ],
   admin: [
     { id: 'ad-dashboard', icon: '🏠', label: 'Dashboard' },
     { id: 'ad-users',     icon: '👥', label: 'Usuarios' },
     { id: 'ad-tutorias',  icon: '📚', label: 'Tutorías' },
+    { id: 'ad-requests',  icon: '📨', label: 'Gestión de Solicitudes' },
+    { id: 'ad-audit',     icon: '📜', label: 'Historial de Auditoría' },
   ],
 };
 
@@ -200,13 +244,18 @@ const PAGE_TITLES = {
   'st-request':   'Solicitar Tutoría',
   'st-my':        'Mis Tutorías',
   'st-history':   'Historial',
+  'st-grades':    'Mis Notas',
   'tc-dashboard': 'Dashboard Docente',
   'tc-requests':  'Solicitudes Pendientes',
   'tc-schedule':  'Mi Horario',
   'tc-history':   'Historial de Tutorías',
+  'tc-grades':    'Gestionar Notas',
   'ad-dashboard': 'Panel Administrador',
   'ad-users':     'Gestión de Usuarios',
   'ad-tutorias':  'Gestión de Tutorías',
+  'ad-requests':  'Gestión de Solicitudes',
+  'ad-audit':     'Registro de Auditoría e Historial',
+  'st-requests-status': 'Estado de mis trámites',
 };
 
 function navigate(viewId) {
@@ -251,16 +300,6 @@ function fmtDate(d) {
   const [y, m, day] = d.split('-');
   const months = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   return `${day} ${months[parseInt(m)]} ${y}`;
-}
-
-function indicadorRendimiento(estudiante) {
-  if (estudiante.habilitationPending) {
-    return { clase: 'status-yellow', etiqueta: 'Habilitación pendiente' };
-  }
-
-  return estudiante.partialAverage < UMBRAL_APROBACION
-    ? { clase: 'status-red', etiqueta: 'Por debajo del umbral' }
-    : { clase: 'status-green', etiqueta: 'En el umbral o por encima' };
 }
 
 // ══════════════════════════════════════════════
@@ -425,6 +464,120 @@ const VIEWS = {
                 </tbody>
               </table>`
             : `<div class="empty-state"><div class="icon">📂</div><p>Aún no tienes tutorías realizadas.</p></div>`}
+        </div>
+      </div>`;
+  },
+
+  // ─── ESTUDIANTE: MIS NOTAS ─────────────────
+  'st-grades': () => {
+    const misMatriculas = MATRICULAS.filter(m => m.estudiante === USERS.student.name);
+    return `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🎓 Mis Notas — Periodo ${PERIODO_ACTUAL.nombre}</span>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr><th>Asignatura</th><th>Grupo</th><th>C1</th><th>C2</th><th>C3</th><th>HAB</th><th>Definitiva</th><th>Acción</th></tr>
+            </thead>
+            <tbody>
+              ${misMatriculas.map(m => {
+                const definitiva = calcularDefinitiva(m.notas);
+                const cortesCompletos = Object.keys(PERIODO_ACTUAL.pesos)
+                  .every(corte => notaVisible(m.notas[corte]));
+                const semaforo = getSemaforoEstudiante(m);
+                let accionHtml = '<span class="badge-status bs-pending">⏳ En curso</span>';
+
+                if (semaforo.mensaje === 'Habilitación pendiente') {
+                  accionHtml = `<button class="btn btn-primary btn-sm" onclick="solicitarHabilitacion(${m.id})">Solicitar Habilitación</button>`;
+                } else if (cortesCompletos && definitiva >= PERIODO_ACTUAL.umbral) {
+                  accionHtml = '<span class="badge-status bs-accepted">✅ Aprobada</span>';
+                } else if (cortesCompletos) {
+                  accionHtml = '<span class="badge-status bs-rejected">❌ Reprobada</span>';
+                }
+                if (m.estado !== 'CANCELADA') {
+                  accionHtml += `<br><button class="btn btn-danger btn-sm" onclick="solicitarCancelacionMateria(${m.id})">Solicitar cancelación</button>`;
+                }
+
+                return `
+                  <tr>
+                    <td><strong>${m.asignatura}</strong></td>
+                    <td>${m.grupo}</td>
+                    <td>${m.notas.C1.valor === null ? '—' : m.notas.C1.valor.toFixed(1)} ${badgeNota(m.notas.C1.estado)}</td>
+                    <td>${m.notas.C2.valor === null ? '—' : m.notas.C2.valor.toFixed(1)} ${badgeNota(m.notas.C2.estado)}</td>
+                    <td>${m.notas.C3.valor === null ? '—' : m.notas.C3.valor.toFixed(1)} ${badgeNota(m.notas.C3.estado)}</td>
+                    <td>${m.notas.HAB.valor === null ? '—' : m.notas.HAB.valor.toFixed(1)} ${badgeNota(m.notas.HAB.estado)}</td>
+                    <td><strong>${definitiva ? definitiva.toFixed(2) : '—'}</strong></td>
+                    <td>${accionHtml}</td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  },
+
+  // ─── ESTUDIANTE: SOLICITAR MATERIA ─────────
+  'st-request-subject': () => `
+    <div class="card" style="max-width:700px">
+      <div class="card-header">
+        <span class="card-title">📖 Solicitar inscripción de materia</span>
+      </div>
+      <div class="card-body" style="padding:24px">
+        <div class="form-group">
+          <label>Grupo y horario disponible</label>
+          <select id="subject-group">
+            <option value="">-- Seleccionar grupo --</option>
+            ${GRUPOS_DISPONIBLES.map(g => `
+              <option value="${g.id}" ${g.cupos === 0 ? 'disabled' : ''}>
+                ${g.materia} · ${g.id} · ${g.horario} · ${g.cupos} cupo(s)
+              </option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Motivo (opcional)</label>
+          <textarea id="subject-reason" rows="3" placeholder="Indica por qué solicitas la inscripción"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="solicitarInscripcionMateria()">
+          Enviar solicitud de inscripción
+        </button>
+      </div>
+    </div>`,
+
+  // ─── ESTUDIANTE: ESTADO DE TRÁMITES ────────
+  'st-requests-status': () => {
+    const misSolicitudes = SOLICITUDES.filter(s => s.estudiante === USERS.student.name);
+    return `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📨 Estado de mis trámites</span>
+          <button class="btn btn-primary btn-sm" onclick="navigate('st-request-subject')">+ Solicitar materia</button>
+        </div>
+        <div class="card-body">
+          ${misSolicitudes.length ? `
+            <table>
+              <thead><tr><th>Tipo</th><th>Materia</th><th>Grupo</th><th>Creada</th><th>Estado</th><th>Detalle</th></tr></thead>
+              <tbody>
+                ${misSolicitudes.map(s => {
+                  let detalle = '—';
+                  if (s.estado === 'RECHAZADA') {
+                    detalle = s.motivoRechazo || 'Sin motivo registrado';
+                  } else if (s.fechaHoraProgramada) {
+                    detalle = `Prueba: ${s.fechaHoraProgramada.replace('T', ' ')}`;
+                  }
+                  return `
+                    <tr>
+                      <td>${s.tipo}</td>
+                      <td>${s.materia}</td>
+                      <td>${s.grupo}</td>
+                      <td>${fmtDate(s.fechaCreacion)}</td>
+                      <td>${badgeSolicitud(s.estado)}</td>
+                      <td>${detalle}</td>
+                    </tr>`;
+                }).join('')}
+              </tbody>
+            </table>` : '<div class="empty-state"><div class="icon">📭</div><p>No tienes trámites registrados.</p></div>'}
         </div>
       </div>`;
   },
@@ -615,6 +768,178 @@ const VIEWS = {
       </div>`;
   },
 
+  // ─── DOCENTE: GESTIONAR NOTAS ──────────────
+  'tc-grades': () => {
+    const misMatriculas = MATRICULAS.filter(m => m.docente === USERS.teacher.name);
+    return `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📊 Gestión de Notas — Periodo ${PERIODO_ACTUAL.nombre}</span>
+          <button class="btn btn-ghost btn-sm" onclick="navigate('tc-grades')">↻ Actualizar</button>
+        </div>
+        <div class="card-body">
+          <table>
+            <thead>
+              <tr><th>Estudiante</th><th>Asignatura</th><th>Grupo</th><th>Semáforo</th><th>C1</th><th>C2</th><th>C3</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+              ${misMatriculas.map(m => {
+                const semaforo = getSemaforoEstudiante(m);
+                const claseSemaforo = {
+                  rojo: 'bs-rejected',
+                  amarillo: 'bs-pending',
+                  verde: 'bs-accepted'
+                }[semaforo.clase];
+                return `
+                  <tr>
+                    <td><strong>${m.estudiante}</strong></td>
+                    <td>${m.asignatura}</td>
+                    <td>${m.grupo}</td>
+                    <td><span class="badge-status ${claseSemaforo}">${semaforo.clase} · ${semaforo.promedio.toFixed(2)}<br>${semaforo.mensaje}</span></td>
+                    ${['C1', 'C2', 'C3'].map(corte => `
+                      <td>
+                        <input id="nota-${m.id}-${corte}" type="number" min="0" max="5" step="0.1"
+                          value="${m.notas[corte].valor === null ? '' : m.notas[corte].valor}"
+                          style="width:70px" ${m.notas[corte].estado === 'CERRADA' ? 'disabled' : ''}>
+                        <small>${badgeNota(m.notas[corte].estado)}</small>
+                      </td>`).join('')}
+                    <td style="display:flex;gap:6px;flex-wrap:wrap">
+                      <button class="btn btn-ghost btn-sm" onclick="guardarBorradorNota(${m.id})">Guardar borrador</button>
+                      <button class="btn btn-success btn-sm" onclick="publicarCorte('${m.grupo}', 'C1')">Publicar C1</button>
+                      <button class="btn btn-success btn-sm" onclick="publicarCorte('${m.grupo}', 'C2')">Publicar C2</button>
+                      <button class="btn btn-success btn-sm" onclick="publicarCorte('${m.grupo}', 'C3')">Publicar C3</button>
+                    </td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  },
+
+  // ─── ADMIN: GESTIÓN DE SOLICITUDES ─────────
+  'ad-requests': () => {
+    const solicitudes = SOLICITUDES.filter(s => solicitudFiltro === 'TODAS' || s.tipo === solicitudFiltro);
+    const pendientes = solicitudes.filter(s => s.estado === 'PENDIENTE');
+    return `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📨 Gestión de Solicitudes</span>
+          <span class="badge-status bs-pending">${pendientes.length} pendiente(s)</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+            ${['TODAS', 'INSCRIPCION', 'CANCELACION', 'HABILITACION'].map(tipo => `
+              <button class="btn ${solicitudFiltro === tipo ? 'btn-primary' : 'btn-ghost'} btn-sm"
+                onclick="filtrarSolicitudes('${tipo}')">${tipo}</button>`).join('')}
+          </div>
+          ${solicitudes.length ? `
+            <table>
+              <thead><tr><th>Tipo</th><th>Estudiante</th><th>Materia</th><th>Grupo</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <tbody>
+                ${solicitudes.map(s => `
+                  <tr>
+                    <td>${s.tipo}</td>
+                    <td><strong>${s.estudiante}</strong></td>
+                    <td>${s.materia}</td>
+                    <td>${s.grupo}</td>
+                    <td>${fmtDate(s.fechaCreacion)}</td>
+                    <td>${badgeSolicitud(s.estado)}</td>
+                    <td>
+                      ${s.estado === 'PENDIENTE'
+                        ? `<button class="btn btn-success btn-sm" onclick="resolverSolicitud(${s.id}, 'APROBADA')">Aprobar</button>
+                           <button class="btn btn-danger btn-sm" onclick="resolverSolicitud(${s.id}, 'RECHAZADA')">Rechazar</button>`
+                        : (s.motivoRechazo || s.fechaHoraProgramada || 'Resuelta')}
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>` : '<div class="empty-state"><div class="icon">✅</div><p>No hay solicitudes para este filtro.</p></div>'}
+        </div>
+      </div>`;
+  },
+
+  // ─── ADMIN: AUDITORÍA ──────────────────────
+  'ad-audit': () => {
+    const registros = AUDITORIA.filter(registro => {
+      const coincideUsuario = !auditoriaFiltro.usuario
+        || registro.usuario.toLowerCase().includes(auditoriaFiltro.usuario.toLowerCase());
+      const coincideEntidad = !auditoriaFiltro.entidad
+        || registro.entidadAfectada === auditoriaFiltro.entidad;
+      return coincideUsuario && coincideEntidad;
+    });
+    const notasCerradas = [];
+    MATRICULAS.forEach(matricula => {
+      Object.keys(PERIODO_ACTUAL.pesos).forEach(corte => {
+        if (matricula.notas[corte].estado === 'CERRADA') {
+          notasCerradas.push({ matricula, corte });
+        }
+      });
+    });
+
+    return `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📜 Registro de Auditoría e Historial</span>
+          <span class="badge-status bs-done">${registros.length} registro(s)</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+            <input id="audit-user-filter" type="search" placeholder="Buscar por usuario"
+              value="${auditoriaFiltro.usuario}" oninput="filtrarAuditoria()">
+            <select id="audit-entity-filter" onchange="filtrarAuditoria()">
+              <option value="">Todas las entidades</option>
+              ${['NOTA', 'REAPERTURA_NOTA', 'TUTORIA', 'SOLICITUD'].map(entidad => `
+                <option value="${entidad}" ${auditoriaFiltro.entidad === entidad ? 'selected' : ''}>${entidad}</option>
+              `).join('')}
+            </select>
+          </div>
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Fecha y hora</th><th>Usuario</th><th>Entidad</th><th>ID entidad</th><th>Valor anterior</th><th>Valor nuevo</th><th>Justificación</th></tr>
+            </thead>
+            <tbody>
+              ${registros.length ? registros.map(registro => `
+                <tr>
+                  <td>${registro.id}</td>
+                  <td>${new Date(registro.fechaHora).toLocaleString('es-CO')}</td>
+                  <td>${registro.usuario}</td>
+                  <td>${registro.entidadAfectada}</td>
+                  <td>${registro.idEntidad}</td>
+                  <td>${formatearAuditoria(registro.valorAnterior)}</td>
+                  <td>${formatearAuditoria(registro.valorNuevo)}</td>
+                  <td>${registro.justificacion || '—'}</td>
+                </tr>`).join('') : `
+                <tr><td colspan="8"><div class="empty-state"><div class="icon">📭</div><p>No hay registros con estos filtros.</p></div></td></tr>`}
+            </tbody>
+          </table>
+          <p style="margin-top:16px;color:var(--muted);font-size:12px">
+            🔒 Historial inmutable: los registros de auditoría no pueden editarse ni eliminarse.
+          </p>
+        </div>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-header">
+          <span class="card-title">🔓 Notas cerradas</span>
+        </div>
+        <div class="card-body">
+          ${notasCerradas.length ? `
+            <table>
+              <thead><tr><th>Estudiante</th><th>Asignatura</th><th>Corte</th><th>Nota</th><th>Acción</th></tr></thead>
+              <tbody>
+                ${notasCerradas.map(item => `
+                  <tr>
+                    <td>${item.matricula.estudiante}</td>
+                    <td>${item.matricula.asignatura}</td>
+                    <td>${item.corte}</td>
+                    <td>${item.matricula.notas[item.corte].valor.toFixed(1)}</td>
+                    <td><button class="btn btn-danger btn-sm" onclick="reabrirNotaCerrada(${item.matricula.id}, '${item.corte}')">Reabrir nota</button></td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>` : '<div class="empty-state"><div class="icon">✅</div><p>No hay notas cerradas.</p></div>'}
+        </div>
+      </div>`;
+  },
+
   // ─── ADMIN: DASHBOARD ──────────────────────
   'ad-dashboard': () => {
     const tots = TUTORIAS.length;
@@ -735,6 +1060,14 @@ function submitRequest() {
   };
 
   TUTORIAS.push(newTutoria);
+  registrarAuditoria(
+    USERS.student.name,
+    'TUTORIA',
+    newTutoria.id,
+    null,
+    { estado: newTutoria.status, responsable: newTutoria.teacher },
+    ''
+  );
   showToast('✅ Solicitud enviada correctamente');
   navigate('st-my');
 }
@@ -751,6 +1084,17 @@ function cancelTutoria(id) {
 }
 
 function confirmCancel(id) {
+  const tutoria = TUTORIAS.find(t => t.id === id);
+  if (tutoria) {
+    registrarAuditoria(
+      USERS.student.name,
+      'TUTORIA',
+      tutoria.id,
+      { estado: tutoria.status, responsable: tutoria.teacher },
+      { estado: 'cancelled', responsable: tutoria.teacher },
+      ''
+    );
+  }
   TUTORIAS = TUTORIAS.filter(t => t.id !== id);
   closeModal();
   showToast('Solicitud cancelada');
@@ -785,7 +1129,16 @@ function showDetails(id) {
 function respondTutoria(id, action) {
   const t = TUTORIAS.find(t => t.id === id);
   if (!t) return;
+  const estadoAnterior = t.status;
   t.status = action;
+  registrarAuditoria(
+    USERS.teacher.name,
+    'TUTORIA',
+    t.id,
+    { estado: estadoAnterior, responsable: t.teacher },
+    { estado: t.status, responsable: t.teacher },
+    ''
+  );
 
   const msg = action === 'accepted'
     ? `✅ Tutoría de ${t.student} aceptada`
@@ -793,6 +1146,413 @@ function respondTutoria(id, action) {
 
   showToast(msg);
   navigate('tc-requests');
+}
+
+function reasignarResponsableTutoria(id, nuevoDocente) {
+  const tutoria = TUTORIAS.find(t => t.id === id);
+  if (!tutoria || !nuevoDocente || tutoria.teacher === nuevoDocente) {
+    showToast('⚠️ No se puede reasignar la tutoría');
+    return;
+  }
+  const docenteAnterior = tutoria.teacher;
+  tutoria.teacher = nuevoDocente;
+  registrarAuditoria(
+    USERS.admin.name,
+    'TUTORIA',
+    tutoria.id,
+    { responsable: docenteAnterior, estado: tutoria.status },
+    { responsable: nuevoDocente, estado: tutoria.status },
+    'Reatribución de responsable'
+  );
+  showToast('✅ Tutoría reasignada correctamente');
+}
+
+// ══════════════════════════════════════════════
+//  ACCIONES — CALIFICACIONES
+// ══════════════════════════════════════════════
+
+function guardarBorradorNota(matriculaId) {
+  const matricula = MATRICULAS.find(m => m.id === matriculaId);
+  if (!matricula) {
+    showToast('⚠️ Matrícula no encontrada');
+    return;
+  }
+
+  for (const corte of Object.keys(PERIODO_ACTUAL.pesos)) {
+    const input = document.getElementById(`nota-${matriculaId}-${corte}`);
+    const valor = input.value === '' ? null : Number(input.value);
+    if (valor !== null && (Number.isNaN(valor) || valor < 0 || valor > 5)) {
+      showToast(`⚠️ La nota ${corte} debe estar entre 0 y 5`);
+      return;
+    }
+    if (matricula.notas[corte].estado !== 'CERRADA') {
+      const notaAnterior = { ...matricula.notas[corte] };
+      const notaNueva = { valor, estado: 'BORRADOR' };
+      matricula.notas[corte] = { valor, estado: 'BORRADOR' };
+      if (notaAnterior.valor !== notaNueva.valor || notaAnterior.estado !== notaNueva.estado) {
+        registrarAuditoria(
+          USERS.teacher.name,
+          'NOTA',
+          `${matricula.id}-${corte}`,
+          notaAnterior,
+          notaNueva,
+          ''
+        );
+      }
+    }
+  }
+
+  showToast('✅ Borrador de notas guardado');
+  navigate('tc-grades');
+}
+
+function publicarCorte(grupo, corte) {
+  if (!PERIODO_ACTUAL.pesos[corte]) {
+    showToast('⚠️ Corte no válido');
+    return;
+  }
+
+  const grupoMatriculas = MATRICULAS.filter(m => m.grupo === grupo);
+  let actualizadas = 0;
+
+  for (const matricula of grupoMatriculas) {
+    if (matricula.notas[corte].estado === 'CERRADA') continue;
+    const input = document.getElementById(`nota-${matricula.id}-${corte}`);
+    const valor = input ? Number(input.value) : matricula.notas[corte].valor;
+    if (Number.isNaN(valor) || valor < 0 || valor > 5) {
+      showToast(`⚠️ Registra una nota válida para ${matricula.estudiante}`);
+      return;
+    }
+    const notaAnterior = { ...matricula.notas[corte] };
+    const notaNueva = { valor, estado: 'PUBLICADA' };
+    matricula.notas[corte] = notaNueva;
+    if (notaAnterior.valor !== notaNueva.valor || notaAnterior.estado !== notaNueva.estado) {
+      registrarAuditoria(
+        USERS.teacher.name,
+        'NOTA',
+        `${matricula.id}-${corte}`,
+        notaAnterior,
+        notaNueva,
+        ''
+      );
+    }
+    actualizadas += 1;
+  }
+
+  showToast(`✅ ${corte} publicado para ${actualizadas} estudiante(s)`);
+  navigate('tc-grades');
+}
+
+function solicitarHabilitacion(matriculaId) {
+  const matricula = MATRICULAS.find(m => m.id === matriculaId);
+  if (!matricula) {
+    showToast('⚠️ Matrícula no encontrada');
+    return;
+  }
+
+  const definitiva = calcularDefinitiva(matricula.notas);
+  const dentroDelRango = definitiva >= PERIODO_ACTUAL.rangoHabilitacion.minimo
+    && definitiva <= PERIODO_ACTUAL.rangoHabilitacion.maximo;
+  if (!dentroDelRango) {
+    showToast('⚠️ La definitiva no está en el rango de habilitación');
+    return;
+  }
+
+  if (definitiva >= PERIODO_ACTUAL.umbral) {
+    showToast('⚠️ La asignatura ya está aprobada');
+    return;
+  }
+  if (existeSolicitudPendiente('HABILITACION', matricula.estudiante, matricula.asignatura, matricula.grupo)) {
+    showToast('⚠️ Ya existe una solicitud de habilitación pendiente');
+    return;
+  }
+
+  SOLICITUDES.push({
+    id: SOLICITUDES.length + 1,
+    tipo: 'HABILITACION',
+    estudiante: matricula.estudiante,
+    materia: matricula.asignatura,
+    grupo: matricula.grupo,
+    fechaCreacion: new Date().toISOString().split('T')[0],
+    estado: 'PENDIENTE',
+    fechaHoraProgramada: null,
+    motivoRechazo: '',
+    matriculaId
+  });
+  showToast('✅ Solicitud de habilitación enviada');
+  navigate('st-requests-status');
+}
+
+function reabrirNotaCerrada(matriculaId, corte) {
+  const matricula = obtenerMatricula(matriculaId);
+  if (!matricula || !matricula.notas[corte] || matricula.notas[corte].estado !== 'CERRADA') {
+    showToast('⚠️ La nota no está cerrada o no existe');
+    return;
+  }
+
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>🔓 Reabrir nota cerrada</h3>
+    <p>${matricula.asignatura} — ${corte} — ${matricula.estudiante}</p>
+    <div class="form-group">
+      <label>Justificación de Reapertura (obligatoria)</label>
+      <textarea id="reopen-justification" rows="4" placeholder="Describe la razón de la reapertura"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarReaperturaNota(${matriculaId}, '${corte}')">Confirmar reapertura</button>
+    </div>`);
+}
+
+function confirmarReaperturaNota(matriculaId, corte) {
+  const input = document.getElementById('reopen-justification');
+  const justificacion = input ? input.value.trim() : '';
+  if (!justificacion) {
+    showToast('⚠️ La justificación de reapertura es obligatoria');
+    return;
+  }
+  const matricula = obtenerMatricula(matriculaId);
+  if (!matricula || !matricula.notas[corte] || matricula.notas[corte].estado !== 'CERRADA') {
+    closeModal();
+    showToast('⚠️ La nota ya no está cerrada o no existe');
+    return;
+  }
+
+  const notaAnterior = { ...matricula.notas[corte] };
+  const notaNueva = { valor: notaAnterior.valor, estado: 'PUBLICADA' };
+  matricula.notas[corte] = notaNueva;
+  registrarAuditoria(
+    USERS.admin.name,
+    'REAPERTURA_NOTA',
+    `${matricula.id}-${corte}`,
+    notaAnterior,
+    notaNueva,
+    justificacion
+  );
+  closeModal();
+  showToast('✅ Nota reabierta correctamente');
+  navigate('ad-audit');
+}
+
+function solicitarInscripcionMateria() {
+  const grupoId = document.getElementById('subject-group').value;
+  const grupo = GRUPOS_DISPONIBLES.find(g => g.id === grupoId);
+  if (!grupo) {
+    showToast('⚠️ Selecciona un grupo disponible');
+    return;
+  }
+  if (grupo.cupos <= 0) {
+    showToast('⚠️ El grupo no tiene cupos disponibles');
+    return;
+  }
+  if (MATRICULAS.some(m => m.estudiante === USERS.student.name && m.asignatura === grupo.materia && m.estado !== 'CANCELADA')) {
+    showToast('⚠️ Ya estás matriculada en esta materia');
+    return;
+  }
+  if (existeSolicitudPendiente('INSCRIPCION', USERS.student.name, grupo.materia, grupo.id)) {
+    showToast('⚠️ Ya existe una solicitud pendiente para este grupo');
+    return;
+  }
+
+  SOLICITUDES.push({
+    id: SOLICITUDES.length + 1,
+    tipo: 'INSCRIPCION',
+    estudiante: USERS.student.name,
+    materia: grupo.materia,
+    grupo: grupo.id,
+    fechaCreacion: new Date().toISOString().split('T')[0],
+    estado: 'PENDIENTE',
+    fechaHoraProgramada: null,
+    motivoRechazo: ''
+  });
+  showToast('✅ Solicitud de inscripción enviada');
+  navigate('st-requests-status');
+}
+
+function solicitarCancelacionMateria(matriculaId) {
+  const matricula = obtenerMatricula(matriculaId);
+  if (!matricula || matricula.estado === 'CANCELADA') {
+    showToast('⚠️ Matrícula no disponible');
+    return;
+  }
+  if (new Date().toISOString().split('T')[0] > FECHA_LIMITE_CANCELACION) {
+    showToast('⚠️ La fecha límite de cancelación ya venció');
+    return;
+  }
+  const tieneNotaCerrada = Object.values(matricula.notas).some(nota => nota.estado === 'CERRADA');
+  if (tieneNotaCerrada) {
+    showToast('⚠️ No puedes cancelar una asignatura con notas cerradas');
+    return;
+  }
+
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>¿Solicitar cancelación?</h3>
+    <p>Se enviará una solicitud para cancelar <strong>${matricula.asignatura}</strong> del grupo ${matricula.grupo}.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">No, volver</button>
+      <button class="btn btn-danger" onclick="crearSolicitudCancelacion(${matricula.id})">Sí, solicitar</button>
+    </div>`);
+}
+
+function crearSolicitudCancelacion(matriculaId) {
+  const matricula = obtenerMatricula(matriculaId);
+  closeModal();
+  if (!matricula || existeSolicitudPendiente('CANCELACION', matricula.estudiante, matricula.asignatura, matricula.grupo)) {
+    showToast('⚠️ Ya existe una solicitud de cancelación pendiente');
+    return;
+  }
+  SOLICITUDES.push({
+    id: SOLICITUDES.length + 1,
+    tipo: 'CANCELACION',
+    estudiante: matricula.estudiante,
+    materia: matricula.asignatura,
+    grupo: matricula.grupo,
+    fechaCreacion: new Date().toISOString().split('T')[0],
+    estado: 'PENDIENTE',
+    fechaHoraProgramada: null,
+    motivoRechazo: '',
+    matriculaId
+  });
+  showToast('✅ Solicitud de cancelación enviada');
+  navigate('st-requests-status');
+}
+
+function filtrarSolicitudes(tipo) {
+  solicitudFiltro = tipo;
+  navigate('ad-requests');
+}
+
+function filtrarAuditoria() {
+  const userInput = document.getElementById('audit-user-filter');
+  const entityInput = document.getElementById('audit-entity-filter');
+  auditoriaFiltro = {
+    usuario: userInput ? userInput.value : '',
+    entidad: entityInput ? entityInput.value : ''
+  };
+  navigate('ad-audit');
+}
+
+function resolverSolicitud(solicitudId, decision) {
+  const solicitud = SOLICITUDES.find(s => s.id === solicitudId);
+  if (!solicitud || solicitud.estado !== 'PENDIENTE') {
+    showToast('⚠️ Solicitud no disponible');
+    return;
+  }
+  if (decision === 'RECHAZADA') {
+    abrirModalRechazo(solicitudId);
+    return;
+  }
+  if (solicitud.tipo === 'HABILITACION') {
+    abrirModalFechaHabilitacion(solicitudId);
+    return;
+  }
+  aplicarResolucionSolicitud(solicitud, decision);
+}
+
+function aplicarResolucionSolicitud(solicitud, decision, fechaHoraProgramada) {
+  if (solicitud.tipo === 'INSCRIPCION' && decision === 'APROBADA') {
+    const grupo = GRUPOS_DISPONIBLES.find(g => g.id === solicitud.grupo);
+    if (!grupo || grupo.cupos <= 0) {
+      showToast('⚠️ No hay cupos disponibles para aprobar la inscripción');
+      return;
+    }
+    grupo.cupos -= 1;
+    MATRICULAS.push({
+      id: MATRICULAS.length + 1,
+      estudiante: solicitud.estudiante,
+      asignatura: solicitud.materia,
+      grupo: solicitud.grupo,
+      docente: grupo.docente,
+      estado: 'ACTIVA',
+      notas: {
+        C1: { valor: null, estado: 'BORRADOR' },
+        C2: { valor: null, estado: 'BORRADOR' },
+        C3: { valor: null, estado: 'BORRADOR' },
+        HAB: { valor: null, estado: 'BORRADOR' }
+      }
+    });
+  } else if (solicitud.tipo === 'CANCELACION' && decision === 'APROBADA') {
+    const matricula = MATRICULAS.find(m => m.estudiante === solicitud.estudiante
+      && m.asignatura === solicitud.materia && m.grupo === solicitud.grupo);
+    if (!matricula) {
+      showToast('⚠️ No se encontró la matrícula para cancelar');
+      return;
+    }
+    matricula.estado = 'CANCELADA';
+  } else if (solicitud.tipo === 'HABILITACION' && decision === 'APROBADA') {
+    solicitud.fechaHoraProgramada = fechaHoraProgramada;
+  }
+
+  registrarAuditoria(
+    USERS.admin.name,
+    'SOLICITUD',
+    solicitud.id,
+    { estado: 'PENDIENTE' },
+    {
+      estado: decision,
+      tipo: solicitud.tipo,
+      fechaHoraProgramada: fechaHoraProgramada || null
+    },
+    solicitud.motivoRechazo || ''
+  );
+  solicitud.estado = decision;
+  showToast(`✅ Solicitud ${decision === 'APROBADA' ? 'aprobada' : 'actualizada'}`);
+  navigate('ad-requests');
+}
+
+function abrirModalFechaHabilitacion(solicitudId) {
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>📅 Programar prueba de habilitación</h3>
+    <p>La fecha y hora son obligatorias para aprobar esta solicitud.</p>
+    <div class="form-group">
+      <label>Fecha y hora</label>
+      <input type="datetime-local" id="habilitacion-date">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarFechaHabilitacion(${solicitudId})">Aprobar y programar</button>
+    </div>`);
+}
+
+function confirmarFechaHabilitacion(solicitudId) {
+  const fechaHora = document.getElementById('habilitacion-date').value;
+  if (!fechaHora) {
+    showToast('⚠️ La fecha y hora son obligatorias');
+    return;
+  }
+  const solicitud = SOLICITUDES.find(s => s.id === solicitudId);
+  closeModal();
+  if (solicitud) aplicarResolucionSolicitud(solicitud, 'APROBADA', fechaHora);
+}
+
+function abrirModalRechazo(solicitudId) {
+  openModal(`
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3>❌ Rechazar solicitud</h3>
+    <div class="form-group">
+      <label>Motivo del rechazo (obligatorio)</label>
+      <textarea id="rejection-reason" rows="3"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarRechazo(${solicitudId})">Rechazar solicitud</button>
+    </div>`);
+}
+
+function confirmarRechazo(solicitudId) {
+  const motivo = document.getElementById('rejection-reason').value.trim();
+  if (!motivo) {
+    showToast('⚠️ El motivo de rechazo es obligatorio');
+    return;
+  }
+  const solicitud = SOLICITUDES.find(s => s.id === solicitudId);
+  closeModal();
+  if (solicitud) {
+    solicitud.motivoRechazo = motivo;
+    aplicarResolucionSolicitud(solicitud, 'RECHAZADA');
+  }
 }
 
 // ══════════════════════════════════════════════
