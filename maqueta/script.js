@@ -56,6 +56,23 @@ const MATERIAS = ['Cálculo Diferencial', 'Álgebra Lineal', 'Programación I', 
 const DOCENTES = ['Dr. Andrés López', 'Dra. María Torres', 'Dr. Jorge Reyes'];
 const HORAS    = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'];
 
+const UMBRAL_APROBACION = 3.0;
+const GRUPOS_DOCENTE = [
+  {
+    name: 'Cálculo Diferencial · Grupo 01',
+    students: [
+      { name: 'Laura Gómez', partialAverage: 3.7, habilitationPending: false },
+      { name: 'Pedro Sánchez', partialAverage: 2.6, habilitationPending: true }
+    ]
+  },
+  {
+    name: 'Álgebra Lineal · Grupo 02',
+    students: [
+      { name: 'Ana Martínez', partialAverage: 2.8, habilitationPending: false }
+    ]
+  }
+];
+
 // Rol activo
 let currentRole = 'student';
 
@@ -236,6 +253,16 @@ function fmtDate(d) {
   return `${day} ${months[parseInt(m)]} ${y}`;
 }
 
+function indicadorRendimiento(estudiante) {
+  if (estudiante.habilitationPending) {
+    return { clase: 'status-yellow', etiqueta: 'Habilitación pendiente' };
+  }
+
+  return estudiante.partialAverage < UMBRAL_APROBACION
+    ? { clase: 'status-red', etiqueta: 'Por debajo del umbral' }
+    : { clase: 'status-green', etiqueta: 'En el umbral o por encima' };
+}
+
 // ══════════════════════════════════════════════
 //  VISTAS — HTML de cada pantalla
 // ══════════════════════════════════════════════
@@ -281,7 +308,8 @@ const VIEWS = {
               </table>`
             : `<div class="empty-state"><div class="icon">📭</div><p>No tienes tutorías aceptadas aún.</p></div>`}
         </div>
-      </div>`;
+      </div>
+    `;
   },
 
   // ─── ESTUDIANTE: SOLICITAR TUTORÍA ─────────
@@ -439,6 +467,46 @@ const VIEWS = {
                 </tbody>
               </table>`
             : `<div class="empty-state"><div class="icon">📭</div><p>Sin tutorías confirmadas aún.</p></div>`}
+        </div>
+      </div>
+      <div class="card performance-card">
+        <div class="card-header performance-header">
+          <div>
+            <span class="card-title">🚦 Rendimiento académico por grupo</span>
+            <p class="performance-caption">Promedio ponderado parcial · Aprobación desde ${UMBRAL_APROBACION.toFixed(1)}/5,0</p>
+          </div>
+          <div class="performance-legend" aria-label="Leyenda del semáforo">
+            <span class="performance-status status-red"><span class="signal" aria-hidden="true"></span>Por debajo</span>
+            <span class="performance-status status-green"><span class="signal" aria-hidden="true"></span>En o sobre el umbral</span>
+            <span class="performance-status status-yellow"><span class="signal" aria-hidden="true"></span>Habilitación pendiente</span>
+          </div>
+        </div>
+        <div class="card-body performance-body">
+          ${GRUPOS_DOCENTE.map(grupo => `
+            <section class="performance-group" aria-label="${grupo.name}">
+              <h3>${grupo.name}</h3>
+              <div class="performance-table-wrap">
+                <table>
+                  <thead><tr><th>Estudiante</th><th>Promedio ponderado parcial</th><th>Indicador</th></tr></thead>
+                  <tbody>
+                    ${grupo.students.map(estudiante => {
+                      const indicador = indicadorRendimiento(estudiante);
+                      return `
+                        <tr>
+                          <td><strong>${estudiante.name}</strong></td>
+                          <td>${estudiante.partialAverage.toFixed(1)} / 5,0</td>
+                          <td>
+                            <span class="performance-status ${indicador.clase}">
+                              <span class="signal" aria-hidden="true"></span>${indicador.etiqueta}
+                            </span>
+                          </td>
+                        </tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          `).join('')}
         </div>
       </div>`;
   },
