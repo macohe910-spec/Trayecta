@@ -22,7 +22,7 @@ Plataforma web de trayectoria academica donde estudiantes, docentes y administra
 1. Clona el repositorio: `git clone https://github.com/macohe910-spec/Trayecta.git`
 2. Abre `maqueta/index.html` en el navegador. No requiere instalación ni servidor.
 
-# Usuarios de prueba 
+## Usuarios de prueba 
 
 | Rol | Correo |
 |---|---|
