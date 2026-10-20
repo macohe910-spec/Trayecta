@@ -2418,3 +2418,5 @@ function showToast(msg) {
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 3000);
 }
+
+//continua edicion 2 entrega
