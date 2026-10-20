@@ -37,4 +37,4 @@ Plataforma web de trayectoria academica donde estudiantes, docentes y administra
 - [Sebastian Alzate Velasquez]
 
 ## Estado 
-Proyecto académico en desarrollo. Entornos de Desarrollo de Software.
+Proyecto académico en desarrollo. Entornos de Desarrollo de Software
