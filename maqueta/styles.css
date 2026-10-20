@@ -290,24 +290,6 @@ modificando colores y tipografia de SGTA (proyecto base)
   display: none;
 }
 
-/* Link Registrarse */
-.login-register {
-  order: 5;
-  text-align: center;
-  margin-top: 20px;
-  font-size: 19px;
-  font-weight: 500;
-  color: var(--gold-text);
-  cursor: pointer;
-  text-decoration: none;
-  transition: .2s;
-}
-
-.login-register:hover {
-  color: var(--gold);
-  text-decoration: underline;
-}
-
 @media (max-width: 480px) {
   .login-wrapper { padding: 28px 22px 24px; }
   .login-title { font-size: 34px; }
