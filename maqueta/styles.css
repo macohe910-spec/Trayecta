@@ -290,24 +290,6 @@ modificando colores y tipografia de SGTA (proyecto base)
   display: none;
 }
 
-/* Link Registrarse */
-.login-register {
-  order: 5;
-  text-align: center;
-  margin-top: 20px;
-  font-size: 19px;
-  font-weight: 500;
-  color: var(--gold-text);
-  cursor: pointer;
-  text-decoration: none;
-  transition: .2s;
-}
-
-.login-register:hover {
-  color: var(--gold);
-  text-decoration: underline;
-}
-
 @media (max-width: 480px) {
   .login-wrapper { padding: 28px 22px 24px; }
   .login-title { font-size: 34px; }
@@ -647,7 +629,26 @@ modificando colores y tipografia de SGTA (proyecto base)
 .form-group textarea:focus {
   outline: none;
   border-color: var(--teal-glow);
-  box-shadow: 0 0 0 3px rgba(95,211,208,.35);;
+  box-shadow: 0 0 0 3px rgba(95,211,208,.35);
+}
+
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background-color: var(--panel);
+  color: var(--text);
+}
+
+select option:checked {
+  background-color: var(--teal-mid);
+  color: var(--white);
+}
+
+select option:disabled {
+  color: var(--gray);
 }
 
 /* ═══════════════════════════════════════════
