@@ -732,7 +732,7 @@ const VIEWS = {
       ${pen > 0
         ? `<div class="alert alert-info">🔔 Tienes <strong>${pen} solicitud(es) pendiente(s)</strong> por revisar.
             <button class="btn btn-ghost btn-sm" onclick="navigate('tc-requests')">Ver ahora →</button>
-           </div>`
+          </div>`
         : ''}
       <div class="card">
         <div class="card-header">
@@ -991,7 +991,7 @@ const VIEWS = {
                     <td>
                       ${s.estado === 'PENDIENTE'
                         ? `<button class="btn btn-success btn-sm" onclick="resolverSolicitud(${s.id}, 'APROBADA')">Aprobar</button>
-                           <button class="btn btn-danger btn-sm" onclick="resolverSolicitud(${s.id}, 'RECHAZADA')">Rechazar</button>`
+                          <button class="btn btn-danger btn-sm" onclick="resolverSolicitud(${s.id}, 'RECHAZADA')">Rechazar</button>`
                         : (s.motivoRechazo || s.fechaHoraProgramada || 'Resuelta')}
                     </td>
                   </tr>`).join('')}

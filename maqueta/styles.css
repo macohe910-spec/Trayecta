@@ -17,14 +17,14 @@ integral del desempeño academico del estudiante
   --red:      #FF9A9A;
   --red-l:    rgba(255,120,120,.16);
   --yellow:   #E3C98F;
-  --yellow-l: #rgba(201,164,92,.18);
+  --yellow-l: rgba(201,164,92,.18);
   --gray:     #9DB0D6;
   --border:   rgba(201,164,92,.55);
   --white:    #FFFFFF;
   --text:     #F1F5FF;
   --text2:    #C9D6F5;
   --sidebar:  260px;
-  --papel: #142860;
+  --panel: #142860;
   --gold: #C9A45C;
   --gold-light: #E3C98F;
   --teal-glow: #5FD3D0;
@@ -94,7 +94,7 @@ modificando colores y tipografia de SGTA (proyecto base)
   right: 0;
   text-align: center;
   font-size: 14px;
-  color: var(--goldtext);
+  color: var(--gold-text);
   opacity: .8;
 }
 
@@ -294,7 +294,7 @@ modificando colores y tipografia de SGTA (proyecto base)
   .login-wrapper { padding: 28px 22px 24px; }
   .login-title { font-size: 34px; }
   .login-logo { width: 72px; }
-  .btn.ingresar { font-size: 18px; }
+  .btn-ingresar { font-size: 18px; }
 }
 
 /* ═══════════════════════════════════════════
@@ -514,7 +514,7 @@ modificando colores y tipografia de SGTA (proyecto base)
 
 /* ── Topbar ── */
 .topbar {
-  background: rgba(6,27,77,80);
+  background: rgba(6,27,77,.80);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   padding: 0 28px;
@@ -937,7 +937,7 @@ tbody tr:hover {
 }
 
 .modal h3 {
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--white);
   margin-bottom: 8px;
